@@ -6,9 +6,16 @@
 #include "util/Logger.h"
 
 #include <winrt/Windows.Globalization.h>
-#include <robuffer.h>  // For IMemoryBufferByteAccess COM interface
 #include <inspectable.h>  // For IInspectable
 #include <thread>
+
+// IMemoryBufferByteAccess COM interface definition
+// This interface provides direct byte access to memory buffers
+MIDL_INTERFACE("5b0d3235-4dba-4d44-865e-8f1d0e4fd04d")
+IMemoryBufferByteAccess : IUnknown
+{
+    virtual HRESULT STDMETHODCALLTYPE GetBuffer(BYTE** value, UINT32* capacity) = 0;
+};
 
 using namespace winrt;
 using namespace winrt::Windows::Media::Ocr;
