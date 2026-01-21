@@ -29,6 +29,7 @@ class AudioFeedback;
 class SafeMode;
 class TrayIcon;
 class SettingsWindow;
+class MouseHook;
 
 /**
  * Controller is the central coordinator that manages all subsystems.
@@ -123,6 +124,7 @@ private:
     std::unique_ptr<TrayIcon> m_trayIcon;
     std::unique_ptr<SettingsWindow> m_settingsWindow;
     std::unique_ptr<LensRenderer> m_lensRenderer;
+    std::unique_ptr<MouseHook> m_mouseHook;
 
     // State
     bool m_enhancementEnabled = false;
@@ -130,6 +132,13 @@ private:
     bool m_initialized = false;
     bool m_startedInSafeMode = false;
     std::atomic<bool> m_shuttingDown{false};
+
+    // Quick lens state (Ctrl+Right-Click)
+    bool m_quickLensActive = false;
+    POINT m_quickLensPosition = {0, 0};
+
+    // Frame rendering state (for frame skipping like ShaderGlass)
+    std::atomic<bool> m_renderingFrame{false};
 
     // Paths
     std::wstring m_appDataPath;

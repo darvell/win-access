@@ -5,6 +5,7 @@
 #include "Controller.h"
 #include "ProfileManager.h"
 #include "HotkeyService.h"
+#include "MouseHook.h"
 #include "overlay/CaptureManager.h"
 #include "overlay/OverlayWindow.h"
 #include "overlay/ShaderPipeline.h"
@@ -154,6 +155,7 @@ void Controller::Shutdown() {
     Sleep(50);
 
     // Now safe to shutdown in reverse order
+    m_mouseHook.reset();  // Uninstall mouse hook
     m_trayIcon.reset();
     m_ocrReader.reset();
     m_speechEngine.reset();
@@ -244,43 +246,103 @@ bool Controller::InitializeOverlay() {
         // Check if shutting down - don't access members during shutdown
         if (m_shuttingDown) return;
 
+        // Check if quick lens is active (works even if enhancement is off)
+        bool needsQuickLens = m_quickLensActive && m_lensRenderer && m_overlayWindow;
+
+        // Early exit if nothing needs rendering - keeps capture running but does no work
+        if (!m_enhancementEnabled && !needsQuickLens) {
+            // Still heartbeat the watchdog even when idle
+            if (m_safeMode) {
+                m_safeMode->Heartbeat();
+            }
+            return;
+        }
+
+        // Frame skipping: if we're still rendering the previous frame, skip this one
+        // This matches ShaderGlass behavior for preventing frame queue buildup
+        bool expected = false;
+        if (!m_renderingFrame.compare_exchange_strong(expected, true)) {
+            // Already rendering - skip this frame
+            return;
+        }
+
+        // RAII guard to reset rendering flag when done
+        struct RenderGuard {
+            std::atomic<bool>& flag;
+            ~RenderGuard() { flag.store(false); }
+        } guard{m_renderingFrame};
+
         if (m_enhancementEnabled && m_overlayWindow && m_shaderPipeline) {
             // Apply shader transforms and render
             auto transformedFrame = m_shaderPipeline->Process(frame);
             m_overlayWindow->RenderFrame(transformedFrame);
 
-            // Render lens overlay if lens mode is active
-            if (m_magnifierEnabled && m_lensRenderer && m_magnifierController &&
-                m_magnifierController->IsLensMode()) {
-                // Get current focus point from focus tracker or cursor position
-                POINT screenPoint;
-                if (m_focusTracker) {
-                    screenPoint = m_focusTracker->GetFocusPoint();
-                }
-                else {
-                    GetCursorPos(&screenPoint);
+            // Render lens overlay: quick lens OR normal lens mode
+            bool needsNormalLens = m_magnifierEnabled && m_lensRenderer &&
+                m_magnifierController && m_magnifierController->IsLensMode();
+
+            if (needsQuickLens || needsNormalLens) {
+                POINT lensCenter;
+                float zoomLevel;
+                int lensSize;
+
+                if (m_quickLensActive) {
+                    // Quick lens: use stored position with fixed params
+                    lensCenter = m_quickLensPosition;
+                    zoomLevel = 2.5f;   // Fixed zoom for quick lens
+                    lensSize = 250;     // Fixed size
+                } else {
+                    // Normal lens mode: use focus tracker
+                    if (m_focusTracker) {
+                        lensCenter = m_focusTracker->GetFocusPoint();
+                    } else {
+                        GetCursorPos(&lensCenter);
+                    }
+                    const auto& profile = m_profileManager->GetCurrentProfile();
+                    zoomLevel = profile.magnifier.zoomLevel;
+                    lensSize = profile.magnifier.lensSize;
                 }
 
                 // Convert screen coordinates to overlay-relative coordinates
-                // The overlay covers the virtual desktop which may have negative origins
                 RECT overlayBounds = m_overlayWindow->GetBounds();
                 POINT lensPoint;
-                lensPoint.x = screenPoint.x - overlayBounds.left;
-                lensPoint.y = screenPoint.y - overlayBounds.top;
+                lensPoint.x = lensCenter.x - overlayBounds.left;
+                lensPoint.y = lensCenter.y - overlayBounds.top;
 
                 auto* renderTarget = m_overlayWindow->GetRenderTarget();
                 if (renderTarget) {
-                    const auto& profile = m_profileManager->GetCurrentProfile();
                     m_lensRenderer->Render(
                         transformedFrame,
                         renderTarget,
                         lensPoint,
-                        profile.magnifier.zoomLevel,
-                        profile.magnifier.lensSize);
+                        zoomLevel,
+                        lensSize);
                 }
             }
 
             // Present the frame to display
+            m_overlayWindow->Present();
+        }
+        else if (needsQuickLens && m_shaderPipeline) {
+            // Quick lens active but enhancement is off - still render quick lens
+            auto transformedFrame = m_shaderPipeline->Process(frame);
+            m_overlayWindow->RenderFrame(transformedFrame);
+
+            RECT overlayBounds = m_overlayWindow->GetBounds();
+            POINT lensPoint;
+            lensPoint.x = m_quickLensPosition.x - overlayBounds.left;
+            lensPoint.y = m_quickLensPosition.y - overlayBounds.top;
+
+            auto* renderTarget = m_overlayWindow->GetRenderTarget();
+            if (renderTarget) {
+                m_lensRenderer->Render(
+                    transformedFrame,
+                    renderTarget,
+                    lensPoint,
+                    2.5f,   // Fixed zoom for quick lens
+                    250);   // Fixed size
+            }
+
             m_overlayWindow->Present();
         }
 
@@ -432,6 +494,36 @@ bool Controller::InitializeMagnifier() {
         }
     });
 
+    // Install mouse hook for quick lens (Ctrl+Right-Click)
+    m_mouseHook = std::make_unique<MouseHook>();
+    m_mouseHook->Install([this](UINT msg, POINT pt, bool ctrlHeld) {
+        if (msg == WM_RBUTTONDOWN && ctrlHeld) {
+            // Offset lens so it doesn't obscure click target
+            m_quickLensActive = true;
+            m_quickLensPosition = { pt.x + 60, pt.y - 60 };
+
+            // Ensure overlay is visible for quick lens
+            // Note: Capture should already be running (started at init for low latency)
+            if (m_overlayWindow && !m_overlayWindow->IsVisible()) {
+                m_overlayWindow->Show();
+            }
+        }
+        else if (msg == WM_RBUTTONUP) {
+            m_quickLensActive = false;
+
+            // Hide overlay if enhancement is also off
+            if (!m_enhancementEnabled && m_overlayWindow) {
+                m_overlayWindow->Hide();
+            }
+        }
+    });
+
+    // Start capture immediately for low-latency quick lens
+    // The frame callback will just return early if nothing needs rendering
+    if (m_captureManager && !m_captureManager->IsRunning()) {
+        m_captureManager->Start();
+    }
+
     LOG_INFO("Magnifier subsystem initialized");
     return true;
 }
@@ -573,7 +665,9 @@ void Controller::EnableEnhancement(bool enable) {
     LOG_INFO("Enhancement {}", enable ? "enabled" : "disabled");
 
     if (enable) {
-        if (m_captureManager) {
+        // Capture should already be running (started at init for low latency)
+        // Just ensure it's started if somehow not running
+        if (m_captureManager && !m_captureManager->IsRunning()) {
             m_captureManager->Start();
         }
         if (m_overlayWindow) {
@@ -582,10 +676,9 @@ void Controller::EnableEnhancement(bool enable) {
         m_audioFeedback->Play(Sound::Enable);
     }
     else {
-        if (m_captureManager) {
-            m_captureManager->Stop();
-        }
-        if (m_overlayWindow) {
+        // Don't stop capture - keep it running for quick lens low latency
+        // Just hide overlay if quick lens isn't active
+        if (m_overlayWindow && !m_quickLensActive) {
             m_overlayWindow->Hide();
         }
         m_audioFeedback->Play(Sound::Disable);
@@ -625,8 +718,9 @@ void Controller::EnableMagnifier(bool enable) {
 void Controller::DisableAllEffects() {
     LOG_INFO("Disabling all effects");
 
-    // Stop enhancement
+    // Stop enhancement and quick lens
     m_enhancementEnabled = false;
+    m_quickLensActive = false;
     if (m_captureManager) {
         m_captureManager->Stop();
     }

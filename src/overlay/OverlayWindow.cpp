@@ -154,8 +154,15 @@ void OverlayWindow::RenderFrame(ID3D11Texture2D* texture) {
 void OverlayWindow::Present() {
     if (!m_visible || !m_swapChain) return;
 
-    // Present with sync interval 1 (vsync)
-    HRESULT hr = m_swapChain->Present(1, 0);
+    // Present with no vsync for lowest latency (like ShaderGlass)
+    // Use DXGI_PRESENT_ALLOW_TEARING when supported for tear-free low-latency
+    UINT syncInterval = 0;  // No vsync - don't block
+    UINT presentFlags = 0;
+    if (m_allowTearing) {
+        presentFlags = DXGI_PRESENT_ALLOW_TEARING;
+    }
+
+    HRESULT hr = m_swapChain->Present(syncInterval, presentFlags);
     if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET) {
         // Get detailed removal reason
         HRESULT reason = S_OK;
@@ -329,6 +336,22 @@ bool OverlayWindow::InitializeD3D() {
         return false;
     }
 
+    // Check for tearing support (allows low-latency present without vsync)
+    ComPtr<IDXGIDevice1> dxgiDevice;
+    m_device.As(&dxgiDevice);
+    ComPtr<IDXGIAdapter> dxgiAdapter;
+    dxgiDevice->GetAdapter(&dxgiAdapter);
+    ComPtr<IDXGIFactory5> dxgiFactory5;
+    dxgiAdapter->GetParent(IID_PPV_ARGS(&dxgiFactory5));
+
+    if (dxgiFactory5) {
+        BOOL tearingSupport = FALSE;
+        hr = dxgiFactory5->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING,
+                                                &tearingSupport, sizeof(tearingSupport));
+        m_allowTearing = SUCCEEDED(hr) && tearingSupport;
+        LOG_INFO("Tearing support: {}", m_allowTearing ? "enabled" : "disabled");
+    }
+
     LOG_INFO("D3D11 device created, feature level: 0x{:04X}", static_cast<int>(featureLevel));
     return true;
 }
@@ -345,16 +368,17 @@ bool OverlayWindow::CreateRenderResources() {
     dxgiAdapter->GetParent(IID_PPV_ARGS(&dxgiFactory));
 
     // Create swap chain for overlay window
+    // Use FLIP_DISCARD with tearing for lowest latency (like ShaderGlass)
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
     swapChainDesc.Width = m_bounds.right - m_bounds.left;
     swapChainDesc.Height = m_bounds.bottom - m_bounds.top;
     swapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
     swapChainDesc.SampleDesc.Count = 1;
     swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    swapChainDesc.BufferCount = 2;
-    swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+    swapChainDesc.BufferCount = 3;  // Triple buffering for smoother frames
+    swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;  // Fastest discard mode
     swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_PREMULTIPLIED;
-    swapChainDesc.Flags = 0;
+    swapChainDesc.Flags = m_allowTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 
     HRESULT hr = dxgiFactory->CreateSwapChainForComposition(
         m_device.Get(),
@@ -540,8 +564,9 @@ void OverlayWindow::Resize() {
         return;
     }
 
-    HRESULT hr = m_swapChain->ResizeBuffers(2, width, height,
-                                             DXGI_FORMAT_B8G8R8A8_UNORM, 0);
+    UINT swapChainFlags = m_allowTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+    HRESULT hr = m_swapChain->ResizeBuffers(3, width, height,
+                                             DXGI_FORMAT_B8G8R8A8_UNORM, swapChainFlags);
     if (FAILED(hr)) {
         LOG_ERROR("Failed to resize swap chain: 0x{:08X}", hr);
         // Hide overlay since we can't render without a valid swap chain

@@ -72,6 +72,7 @@ set(SOURCES
     src/core/Controller.cpp
     src/core/ProfileManager.cpp
     src/core/HotkeyService.cpp
+    src/core/MouseHook.cpp
     src/overlay/CaptureManager.cpp
     src/overlay/OverlayWindow.cpp
     src/overlay/ShaderPipeline.cpp
@@ -94,6 +95,7 @@ set(HEADERS
     src/core/Controller.h
     src/core/ProfileManager.h
     src/core/HotkeyService.h
+    src/core/MouseHook.h
     src/overlay/CaptureManager.h
     src/overlay/OverlayWindow.h
     src/overlay/ShaderPipeline.h

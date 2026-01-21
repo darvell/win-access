@@ -107,6 +107,9 @@ private:
     // Shaders path
     std::wstring m_shadersPath;
 
+    // Tearing support (for low-latency present)
+    bool m_allowTearing = false;
+
     // Register window class
     bool RegisterWindowClass();
 
