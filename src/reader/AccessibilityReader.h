@@ -7,8 +7,9 @@
 
 #include <Windows.h>
 
-// Define 'interface' for Clang compatibility with Windows SDK headers
-#ifndef interface
+// For Clang: define 'interface' as 'struct' if not already defined
+// MSVC defines this in Windows SDK headers, but Clang may miss it
+#if defined(__clang__) && !defined(interface)
 #define interface struct
 #endif
 
