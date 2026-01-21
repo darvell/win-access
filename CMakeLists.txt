@@ -135,6 +135,8 @@ target_compile_definitions(ClarityLayer PRIVATE
     _CRT_SECURE_NO_WARNINGS
     # Enable C++/WinRT fast ABI
     WINRT_FAST_ABI_SIZE=999999
+    # Define 'interface' for UIAutomation headers (needed with /permissive-)
+    interface=struct
 )
 
 # Debug definitions

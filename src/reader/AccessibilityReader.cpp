@@ -2,15 +2,11 @@
  * Clarity Layer - Accessibility Reader Implementation
  */
 
-// Must define 'interface' before ANY Windows headers are included
-// UIAutomation headers use 'interface' keyword which isn't defined by default
-#ifndef interface
-#define interface struct
-#endif
-
 #include "AccessibilityReader.h"
 #include "util/Logger.h"
 
+// Note: 'interface' is defined as 'struct' via CMakeLists.txt compile definitions
+// This is required for UIAutomation headers when using /permissive- flag
 #include <UIAutomationClient.h>
 #include <atlbase.h>
 #include <sstream>
