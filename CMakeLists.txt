@@ -149,8 +149,8 @@ target_compile_definitions(ClarityLayer PRIVATE
 set_target_properties(ClarityLayer PROPERTIES
     WIN32_EXECUTABLE TRUE
     VS_DPI_AWARE "PerMonitor"
-    # Use unicode runtime
-    MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
+    # Use static runtime for standalone executable (no DLL dependencies)
+    MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
 )
 
 # Find DirectX Shader Compiler (dxc) or fall back to fxc
