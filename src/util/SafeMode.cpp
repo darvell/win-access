@@ -8,7 +8,10 @@
 #include "core/Controller.h"
 
 #include <Windows.h>
+#include <Mmsystem.h>  // For PlaySoundW and SND_* macros
 #include <atomic>
+
+#pragma comment(lib, "winmm.lib")
 
 namespace clarity {
 

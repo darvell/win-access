@@ -6,6 +6,7 @@
 #include "util/Logger.h"
 
 #include <winrt/Windows.Globalization.h>
+#include <MemoryBuffer.h>  // For IMemoryBufferByteAccess COM interface
 #include <thread>
 
 using namespace winrt;
@@ -196,7 +197,8 @@ SoftwareBitmap OcrReader::CaptureRegionToBitmap(RECT region) {
             uint8_t* dstData = nullptr;
             uint32_t capacity = 0;
 
-            auto byteAccess = reference.as<Windows::Foundation::IMemoryBufferByteAccess>();
+            winrt::com_ptr<IMemoryBufferByteAccess> byteAccess;
+            winrt::check_hresult(reference.as<IInspectable>()->QueryInterface(IID_PPV_ARGS(byteAccess.put())));
             byteAccess->GetBuffer(&dstData, &capacity);
 
             memcpy(dstData, pixels.data(), pixels.size());
@@ -296,7 +298,8 @@ SoftwareBitmap OcrReader::TextureToSoftwareBitmap(ID3D11Texture2D* texture, RECT
             uint8_t* dstData = nullptr;
             uint32_t capacity = 0;
 
-            auto byteAccess = reference.as<Windows::Foundation::IMemoryBufferByteAccess>();
+            winrt::com_ptr<IMemoryBufferByteAccess> byteAccess;
+            winrt::check_hresult(reference.as<IInspectable>()->QueryInterface(IID_PPV_ARGS(byteAccess.put())));
             byteAccess->GetBuffer(&dstData, &capacity);
 
             memcpy(dstData, pixels.data(), pixels.size());
