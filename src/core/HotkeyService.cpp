@@ -44,8 +44,9 @@ bool HotkeyService::RegisterHotkey(Action action, UINT modifiers, UINT vk) {
     m_hotkeys[action] = info;
     m_idToAction[id] = action;
 
+    std::wstring hotkeyStr = FormatHotkey(modifiers, vk);
     LOG_INFO("Registered hotkey: {} -> {}", GetActionName(action),
-             std::string(FormatHotkey(modifiers, vk).begin(), FormatHotkey(modifiers, vk).end()));
+             std::string(hotkeyStr.begin(), hotkeyStr.end()));
 
     return true;
 }
