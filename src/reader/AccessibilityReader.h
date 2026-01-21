@@ -5,14 +5,13 @@
 
 #pragma once
 
-// Must include these before UIAutomation.h to define 'interface' macro
-#define _OLEAUT32_
-#include <Windows.h>
-#include <basetyps.h>  // Defines 'interface' as 'struct'
-#include <wtypes.h>
-#include <unknwn.h>
-#include <oleauto.h>
+// Ensure 'interface' is defined before any Windows SDK headers
+// This is needed for both MSVC and Clang to parse UIAutomation headers correctly
+#ifndef interface
+#define interface struct
+#endif
 
+#include <Windows.h>
 #include <UIAutomation.h>
 #include <string>
 #include <functional>
