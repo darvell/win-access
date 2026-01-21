@@ -7,6 +7,7 @@
 
 #include <inspectable.h>
 #include <dxgi.h>
+#include <ShellScalingApi.h>
 
 namespace clarity {
 

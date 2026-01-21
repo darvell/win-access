@@ -5,6 +5,7 @@
 #include "ProfileManager.h"
 #include "util/Logger.h"
 
+#include <Windows.h>
 #include <fstream>
 #include <nlohmann/json.hpp>
 
