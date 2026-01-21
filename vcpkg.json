@@ -7,7 +7,7 @@
     "nlohmann-json",
     "spdlog"
   ],
-  "builtin-baseline": "2024.01.12",
+  "builtin-baseline": "65604f5075c64b18a84c30de400def13aad2e0ec",
   "overrides": [],
   "features": {},
   "supports": "windows"
