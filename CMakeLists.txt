@@ -156,20 +156,23 @@ set_target_properties(ClarityLayer PROPERTIES
     MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
 )
 
-# Find DirectX Shader Compiler (dxc) or fall back to fxc
-find_program(DXC_EXECUTABLE dxc HINTS "$ENV{VULKAN_SDK}/Bin" "$ENV{WindowsSdkDir}/bin/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}/x64")
+# Find shader compiler - prefer FXC for D3D11 compatibility
+# DXC produces DXIL (SM 6.0+) which D3D11 doesn't support
+# FXC produces DXBC (SM 5.x) which D3D11 requires
 find_program(FXC_EXECUTABLE fxc HINTS "$ENV{WindowsSdkDir}/bin/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}/x64")
+find_program(DXC_EXECUTABLE dxc HINTS "$ENV{VULKAN_SDK}/Bin" "$ENV{WindowsSdkDir}/bin/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}/x64")
 
-if(DXC_EXECUTABLE)
-    set(SHADER_COMPILER ${DXC_EXECUTABLE})
-    set(SHADER_COMPILER_NAME "dxc")
-    message(STATUS "Found DXC shader compiler: ${DXC_EXECUTABLE}")
-elseif(FXC_EXECUTABLE)
+if(FXC_EXECUTABLE)
     set(SHADER_COMPILER ${FXC_EXECUTABLE})
     set(SHADER_COMPILER_NAME "fxc")
     message(STATUS "Found FXC shader compiler: ${FXC_EXECUTABLE}")
+elseif(DXC_EXECUTABLE)
+    # DXC fallback - note: may produce incompatible shaders for D3D11
+    set(SHADER_COMPILER ${DXC_EXECUTABLE})
+    set(SHADER_COMPILER_NAME "dxc")
+    message(WARNING "Using DXC shader compiler - shaders may not work with D3D11: ${DXC_EXECUTABLE}")
 else()
-    # Fall back to hoping it's in PATH
+    # Fall back to hoping fxc is in PATH
     set(SHADER_COMPILER "fxc")
     set(SHADER_COMPILER_NAME "fxc")
     message(WARNING "Could not find shader compiler, using fxc from PATH")

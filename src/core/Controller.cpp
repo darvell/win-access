@@ -401,32 +401,32 @@ bool Controller::InitializeHotkeys() {
 
     m_hotkeyService = std::make_unique<HotkeyService>(m_hwnd);
 
-    // Register default hotkeys
-    // These can be customized via profile
+    // Register default hotkeys - use Ctrl+Shift to avoid Windows conflicts
+    // Win+E, Win+M, Win+L, Win+S, Win+1-9 are all taken by Windows
     using Action = HotkeyService::Action;
 
     // Panic off - ALWAYS registered, cannot be changed
     m_hotkeyService->RegisterHotkey(Action::PanicOff, MOD_CONTROL | MOD_ALT, 'X');
 
-    // Core hotkeys
-    m_hotkeyService->RegisterHotkey(Action::ToggleEnhancement, MOD_WIN, 'E');
-    m_hotkeyService->RegisterHotkey(Action::ToggleMagnifier, MOD_WIN, 'M');
-    m_hotkeyService->RegisterHotkey(Action::ZoomIn, MOD_WIN, VK_OEM_PLUS);
-    m_hotkeyService->RegisterHotkey(Action::ZoomOut, MOD_WIN, VK_OEM_MINUS);
+    // Core hotkeys (Ctrl+Shift+key)
+    m_hotkeyService->RegisterHotkey(Action::ToggleEnhancement, MOD_CONTROL | MOD_SHIFT, 'E');
+    m_hotkeyService->RegisterHotkey(Action::ToggleMagnifier, MOD_CONTROL | MOD_SHIFT, 'M');
+    m_hotkeyService->RegisterHotkey(Action::ZoomIn, MOD_CONTROL | MOD_SHIFT, VK_OEM_PLUS);
+    m_hotkeyService->RegisterHotkey(Action::ZoomOut, MOD_CONTROL | MOD_SHIFT, VK_OEM_MINUS);
 
     // Speech hotkeys
-    m_hotkeyService->RegisterHotkey(Action::SpeakFocus, MOD_WIN, 'F');
-    m_hotkeyService->RegisterHotkey(Action::SpeakUnderCursor, MOD_WIN, 'S');
-    m_hotkeyService->RegisterHotkey(Action::StopSpeaking, 0, VK_ESCAPE);
+    m_hotkeyService->RegisterHotkey(Action::SpeakFocus, MOD_CONTROL | MOD_SHIFT, 'F');
+    m_hotkeyService->RegisterHotkey(Action::SpeakUnderCursor, MOD_CONTROL | MOD_SHIFT, 'S');
+    m_hotkeyService->RegisterHotkey(Action::StopSpeaking, MOD_CONTROL | MOD_SHIFT, VK_ESCAPE);
 
     // Profile hotkeys
-    m_hotkeyService->RegisterHotkey(Action::SwitchProfile1, MOD_WIN, '1');
-    m_hotkeyService->RegisterHotkey(Action::SwitchProfile2, MOD_WIN, '2');
-    m_hotkeyService->RegisterHotkey(Action::SwitchProfile3, MOD_WIN, '3');
+    m_hotkeyService->RegisterHotkey(Action::SwitchProfile1, MOD_CONTROL | MOD_SHIFT, '1');
+    m_hotkeyService->RegisterHotkey(Action::SwitchProfile2, MOD_CONTROL | MOD_SHIFT, '2');
+    m_hotkeyService->RegisterHotkey(Action::SwitchProfile3, MOD_CONTROL | MOD_SHIFT, '3');
 
     // Magnifier modes
-    m_hotkeyService->RegisterHotkey(Action::ToggleLensMode, MOD_WIN, 'L');
-    m_hotkeyService->RegisterHotkey(Action::CycleFollowMode, MOD_WIN, 'T');
+    m_hotkeyService->RegisterHotkey(Action::ToggleLensMode, MOD_CONTROL | MOD_SHIFT, 'L');
+    m_hotkeyService->RegisterHotkey(Action::CycleFollowMode, MOD_CONTROL | MOD_SHIFT, 'T');
 
     LOG_INFO("Hotkey service initialized");
     return true;
