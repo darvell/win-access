@@ -10,10 +10,12 @@
 #include "overlay/ShaderPipeline.h"
 #include "magnifier/MagnifierController.h"
 #include "magnifier/FocusTracker.h"
+#include "magnifier/LensRenderer.h"
 #include "reader/AccessibilityReader.h"
 #include "reader/SpeechEngine.h"
 #include "reader/OcrReader.h"
 #include "ui/TrayIcon.h"
+#include "ui/SettingsWindow.h"
 #include "util/Logger.h"
 #include "util/AudioFeedback.h"
 #include "util/SafeMode.h"
@@ -229,11 +231,81 @@ bool Controller::InitializeOverlay() {
             // Apply shader transforms and render
             auto transformedFrame = m_shaderPipeline->Process(frame);
             m_overlayWindow->RenderFrame(transformedFrame);
+
+            // Render lens overlay if lens mode is active
+            if (m_magnifierEnabled && m_lensRenderer && m_magnifierController &&
+                m_magnifierController->IsLensMode()) {
+                // Get current focus point from focus tracker or cursor position
+                POINT screenPoint;
+                if (m_focusTracker) {
+                    screenPoint = m_focusTracker->GetFocusPoint();
+                }
+                else {
+                    GetCursorPos(&screenPoint);
+                }
+
+                // Convert screen coordinates to overlay-relative coordinates
+                // The overlay covers the virtual desktop which may have negative origins
+                RECT overlayBounds = m_overlayWindow->GetBounds();
+                POINT lensPoint;
+                lensPoint.x = screenPoint.x - overlayBounds.left;
+                lensPoint.y = screenPoint.y - overlayBounds.top;
+
+                auto* renderTarget = m_overlayWindow->GetRenderTarget();
+                if (renderTarget) {
+                    const auto& profile = m_profileManager->GetCurrentProfile();
+                    m_lensRenderer->Render(
+                        transformedFrame,
+                        renderTarget,
+                        lensPoint,
+                        profile.magnifier.zoomLevel,
+                        profile.magnifier.lensSize);
+                }
+            }
         }
 
         // Heartbeat for watchdog
         if (m_safeMode) {
             m_safeMode->Heartbeat();
+        }
+    });
+
+    // Register device lost callback for recovery
+    m_overlayWindow->SetDeviceLostCallback([this]() {
+        LOG_WARN("Device lost - reinitializing dependent resources");
+
+        // Reinitialize shader pipeline with new device
+        if (m_shaderPipeline && m_overlayWindow->GetD3DDevice()) {
+            std::wstring shadersPath = std::filesystem::path(m_assetsPath).parent_path() / L"shaders";
+            if (!m_shaderPipeline->Initialize(m_overlayWindow->GetD3DDevice(), shadersPath)) {
+                LOG_ERROR("Failed to reinitialize shader pipeline after device lost");
+            }
+            else {
+                // Reapply current profile settings
+                ApplyCurrentProfile();
+            }
+        }
+
+        // Reinitialize capture manager with new device
+        if (m_captureManager && m_overlayWindow->GetD3DDevice()) {
+            if (!m_captureManager->Initialize(m_overlayWindow->GetD3DDevice())) {
+                LOG_ERROR("Failed to reinitialize capture manager after device lost");
+            }
+            else if (m_enhancementEnabled) {
+                m_captureManager->Start();
+            }
+        }
+
+        // Reinitialize lens renderer with new device
+        if (m_lensRenderer && m_overlayWindow->GetD3DDevice()) {
+            if (!m_lensRenderer->Initialize(m_overlayWindow->GetD3DDevice(), shadersPath)) {
+                LOG_WARN("Failed to reinitialize lens renderer after device lost");
+            }
+        }
+
+        // Notify user of recovery
+        if (m_trayIcon) {
+            m_trayIcon->ShowBalloon(L"Device Recovered", L"Graphics device was reset and recovered successfully");
         }
     });
 
@@ -319,6 +391,19 @@ bool Controller::InitializeMagnifier() {
         return false;
     }
 
+    // Initialize lens renderer for lens mode
+    if (m_overlayWindow && m_overlayWindow->GetD3DDevice()) {
+        m_lensRenderer = std::make_unique<LensRenderer>();
+        std::wstring shadersPath = std::filesystem::path(m_assetsPath).parent_path() / L"shaders";
+        if (!m_lensRenderer->Initialize(m_overlayWindow->GetD3DDevice(), shadersPath)) {
+            LOG_WARN("Lens renderer initialization failed - lens mode will be unavailable");
+            m_lensRenderer.reset();
+        }
+        else {
+            LOG_INFO("Lens renderer initialized");
+        }
+    }
+
     // Connect focus tracker to magnifier
     m_focusTracker->SetFocusChangeCallback([this](POINT pt) {
         if (m_magnifierEnabled && m_magnifierController) {
@@ -337,6 +422,13 @@ bool Controller::InitializeUI() {
     if (!m_trayIcon->Initialize(m_hwnd, m_hInstance, this)) {
         LOG_ERROR("Failed to initialize tray icon");
         return false;
+    }
+
+    // Initialize settings window
+    m_settingsWindow = std::make_unique<SettingsWindow>();
+    if (!m_settingsWindow->Initialize(m_hInstance, this)) {
+        LOG_WARN("Failed to initialize settings window - continuing without it");
+        // Not fatal, user can still use profile files
     }
 
     LOG_INFO("UI initialized");
@@ -758,6 +850,13 @@ void Controller::CycleFollowMode() {
         m_speechEngine->Speak(std::wstring(L"Following ") +
             (mode == FollowMode::Cursor ? L"cursor" :
              mode == FollowMode::Caret ? L"caret" : L"keyboard focus"));
+    }
+}
+
+void Controller::ShowSettings() {
+    LOG_INFO("Opening settings window");
+    if (m_settingsWindow) {
+        m_settingsWindow->Show();
     }
 }
 

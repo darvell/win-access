@@ -10,10 +10,14 @@
 #include <dxgi1_2.h>
 #include <wrl/client.h>
 #include <vector>
+#include <functional>
 
 namespace clarity {
 
 using Microsoft::WRL::ComPtr;
+
+// Callback for device lost notification
+using DeviceLostCallback = std::function<void()>;
 
 /**
  * OverlayWindow creates a click-through, always-on-top window
@@ -50,10 +54,15 @@ public:
     // Get D3D11 device (for CaptureManager and ShaderPipeline)
     ID3D11Device* GetD3DDevice() { return m_device.Get(); }
     ID3D11DeviceContext* GetD3DContext() { return m_context.Get(); }
+    ID3D11RenderTargetView* GetRenderTarget() { return m_renderTarget.Get(); }
 
     // Handle display/DPI changes
     void OnDisplayChange();
     void OnDpiChange(UINT dpi);
+
+    // Device lost handling
+    void SetDeviceLostCallback(DeviceLostCallback callback) { m_deviceLostCallback = callback; }
+    bool RecoverFromDeviceLost();
 
     // Get window handle
     HWND GetHwnd() const { return m_hwnd; }
@@ -65,6 +74,10 @@ private:
     HINSTANCE m_hInstance = nullptr;
     HWND m_hwnd = nullptr;
     bool m_visible = false;
+    bool m_deviceLost = false;
+
+    // Device lost callback
+    DeviceLostCallback m_deviceLostCallback;
 
     // Total desktop bounds
     RECT m_bounds = {};

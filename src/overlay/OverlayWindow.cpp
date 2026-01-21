@@ -146,9 +146,63 @@ void OverlayWindow::Present() {
     // Present with sync interval 1 (vsync)
     HRESULT hr = m_swapChain->Present(1, 0);
     if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET) {
-        LOG_ERROR("D3D device lost: 0x{:08X}", hr);
-        // TODO: Handle device lost
+        // Get detailed removal reason
+        HRESULT reason = S_OK;
+        if (m_device) {
+            reason = m_device->GetDeviceRemovedReason();
+        }
+        LOG_ERROR("D3D device lost: 0x{:08X}, reason: 0x{:08X}", hr, reason);
+
+        m_deviceLost = true;
+
+        // Attempt recovery
+        if (RecoverFromDeviceLost()) {
+            LOG_INFO("Successfully recovered from device lost");
+            m_deviceLost = false;
+
+            // Notify controller to reinitialize dependent resources
+            if (m_deviceLostCallback) {
+                m_deviceLostCallback();
+            }
+        }
+        else {
+            LOG_ERROR("Failed to recover from device lost - hiding overlay");
+            Hide();
+        }
     }
+}
+
+bool OverlayWindow::RecoverFromDeviceLost() {
+    LOG_INFO("Attempting D3D device recovery...");
+
+    // Release all D3D resources
+    m_renderTarget.Reset();
+    m_swapChain.Reset();
+    m_vertexBuffer.Reset();
+    m_indexBuffer.Reset();
+    m_inputLayout.Reset();
+    m_sampler.Reset();
+    m_blendState.Reset();
+    m_context.Reset();
+    m_device.Reset();
+
+    // Wait for GPU to recover
+    Sleep(100);
+
+    // Reinitialize D3D
+    if (!InitializeD3D()) {
+        LOG_ERROR("Failed to reinitialize D3D11 device");
+        return false;
+    }
+
+    // Recreate render resources
+    if (!CreateRenderResources()) {
+        LOG_ERROR("Failed to recreate render resources");
+        return false;
+    }
+
+    LOG_INFO("D3D device recovery complete");
+    return true;
 }
 
 void OverlayWindow::OnDisplayChange() {

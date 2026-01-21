@@ -20,12 +20,14 @@ class OverlayWindow;
 class ShaderPipeline;
 class MagnifierController;
 class FocusTracker;
+class LensRenderer;
 class AccessibilityReader;
 class SpeechEngine;
 class OcrReader;
 class AudioFeedback;
 class SafeMode;
 class TrayIcon;
+class SettingsWindow;
 
 /**
  * Controller is the central coordinator that manages all subsystems.
@@ -97,6 +99,9 @@ public:
     AudioFeedback* GetAudioFeedback() { return m_audioFeedback.get(); }
     SpeechEngine* GetSpeechEngine() { return m_speechEngine.get(); }
 
+    // UI commands
+    void ShowSettings();
+
 private:
     HWND m_hwnd;
     HINSTANCE m_hInstance;
@@ -115,6 +120,8 @@ private:
     std::unique_ptr<AudioFeedback> m_audioFeedback;
     std::unique_ptr<SafeMode> m_safeMode;
     std::unique_ptr<TrayIcon> m_trayIcon;
+    std::unique_ptr<SettingsWindow> m_settingsWindow;
+    std::unique_ptr<LensRenderer> m_lensRenderer;
 
     // State
     bool m_enhancementEnabled = false;

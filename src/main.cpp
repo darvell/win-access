@@ -220,6 +220,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow
         }
 
         LOG_INFO("Controller initialized successfully");
+
+        // Show Settings window on startup (main UI)
+        g_controller->ShowSettings();
     }
     catch (const std::exception& e) {
         LOG_ERROR("Exception during initialization: {}", e.what());

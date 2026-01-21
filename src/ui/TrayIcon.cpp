@@ -237,8 +237,7 @@ void TrayIcon::HandleMenuCommand(MenuItem item) {
             break;
 
         case MenuItem::OpenSettings:
-            // TODO: Open settings window
-            ShowBalloon(L"Settings", L"Settings window not yet implemented");
+            m_controller->ShowSettings();
             break;
 
         case MenuItem::PanicOff:

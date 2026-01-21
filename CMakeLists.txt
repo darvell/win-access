@@ -86,6 +86,7 @@ set(SOURCES
     src/util/Logger.cpp
     src/util/AudioFeedback.cpp
     src/util/SafeMode.cpp
+    src/resources.rc
 )
 
 # Header files
