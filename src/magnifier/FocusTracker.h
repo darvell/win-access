@@ -6,7 +6,7 @@
 #pragma once
 
 #include <Windows.h>
-#include <UIAutomation.h>
+#include <UIAutomationClient.h>
 #include <functional>
 #include <atomic>
 #include <thread>
@@ -15,6 +15,9 @@
 
 namespace clarity {
 
+// Forward declaration
+class FocusChangedHandler;
+
 /**
  * FocusTracker monitors the current point of interest based on mode:
  * - Cursor: Follows mouse cursor
@@ -22,6 +25,9 @@ namespace clarity {
  * - KeyboardFocus: Follows currently focused UI element
  */
 class FocusTracker {
+    // Allow FocusChangedHandler to call NotifyFocusChange
+    friend class FocusChangedHandler;
+
 public:
     FocusTracker();
     ~FocusTracker();

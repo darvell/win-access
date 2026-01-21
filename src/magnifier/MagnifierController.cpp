@@ -124,7 +124,9 @@ bool MagnifierController::SetColorEffect(const MAGCOLOREFFECT& effect) {
         return false;
     }
 
-    if (!MagSetFullscreenColorEffect(&effect)) {
+    // Windows API expects non-const pointer, make a copy
+    MAGCOLOREFFECT effectCopy = effect;
+    if (!MagSetFullscreenColorEffect(&effectCopy)) {
         LOG_ERROR("Failed to set color effect");
         return false;
     }
