@@ -7,11 +7,10 @@
 
 #include <Windows.h>
 
-// Ensure 'interface' is defined for UIAutomation.h
-// Windows.h should define this, but it may not in all configurations
-#ifndef interface
+// Force define 'interface' as 'struct' for UIAutomation.h compatibility
+// The Windows SDK headers require this but WIN32_LEAN_AND_MEAN may exclude it
+#undef interface
 #define interface struct
-#endif
 
 #include <UIAutomation.h>
 #include <string>
