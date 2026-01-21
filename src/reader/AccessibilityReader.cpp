@@ -5,6 +5,11 @@
 #include "AccessibilityReader.h"
 #include "util/Logger.h"
 
+// Define 'interface' for UIAutomation headers
+#undef interface
+#define interface struct
+
+#include <UIAutomation.h>
 #include <atlbase.h>
 #include <sstream>
 

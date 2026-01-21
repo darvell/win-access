@@ -6,15 +6,13 @@
 #pragma once
 
 #include <Windows.h>
-
-// Force define 'interface' as 'struct' for UIAutomation.h compatibility
-// The Windows SDK headers require this but WIN32_LEAN_AND_MEAN may exclude it
-#undef interface
-#define interface struct
-
-#include <UIAutomation.h>
 #include <string>
 #include <functional>
+
+// Forward declarations - actual includes in .cpp file
+struct IUIAutomation;
+struct IUIAutomationElement;
+struct IUIAutomationTreeWalker;
 
 namespace clarity {
 
