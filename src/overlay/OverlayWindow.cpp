@@ -7,6 +7,7 @@
 
 #include <dwmapi.h>
 #include <d3dcompiler.h>
+#include <dxgi1_5.h>
 #include <fstream>
 #include <filesystem>
 
