@@ -1,0 +1,14 @@
+{
+  "name": "clarity-layer",
+  "version": "0.1.0",
+  "description": "Windows accessibility application for low-vision users",
+  "homepage": "https://github.com/clarity-layer",
+  "dependencies": [
+    "nlohmann-json",
+    "spdlog"
+  ],
+  "builtin-baseline": "2024.01.12",
+  "overrides": [],
+  "features": {},
+  "supports": "windows"
+}

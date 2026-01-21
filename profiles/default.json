@@ -1,0 +1,35 @@
+{
+  "name": "default",
+  "version": 1,
+  "visual": {
+    "enabled": false,
+    "contrast": 1.5,
+    "brightness": 0.1,
+    "gamma": 1.0,
+    "saturation": 0.8,
+    "invertMode": "none",
+    "edgeStrength": 0.0
+  },
+  "magnifier": {
+    "enabled": false,
+    "zoomLevel": 2.0,
+    "followMode": "cursor",
+    "lensMode": false,
+    "lensSize": 300
+  },
+  "speech": {
+    "rate": 2,
+    "volume": 100,
+    "voice": "default"
+  },
+  "hotkeys": {
+    "toggle": "Win+E",
+    "magnifier": "Win+M",
+    "zoomIn": "Win+Plus",
+    "zoomOut": "Win+Minus",
+    "speakFocus": "Win+F",
+    "speakCursor": "Win+S",
+    "stopSpeaking": "Escape",
+    "panicOff": "Ctrl+Alt+X"
+  }
+}

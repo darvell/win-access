@@ -1,0 +1,60 @@
+name: Build
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - name: MSVC
+            preset: msvc-release
+          - name: Clang
+            preset: clang-release
+
+    runs-on: windows-latest
+    name: Build (${{ matrix.name }})
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgGitCommitId: '2024.01.12'
+
+    - name: Setup Ninja
+      uses: seanmiddleditch/gha-setup-ninja@master
+
+    - name: Setup MSVC (for Clang build)
+      if: matrix.preset == 'clang-release'
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+
+    - name: Configure CMake
+      run: cmake --preset ${{ matrix.preset }}
+      env:
+        VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+
+    - name: Build
+      run: cmake --build --preset ${{ matrix.preset }}
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ClarityLayer-${{ matrix.name }}
+        path: |
+          build/${{ matrix.preset }}/ClarityLayer.exe
+          build/${{ matrix.preset }}/shaders/
+          build/${{ matrix.preset }}/profiles/
+          build/${{ matrix.preset }}/assets/
+        if-no-files-found: error
