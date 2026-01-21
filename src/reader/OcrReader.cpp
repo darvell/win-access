@@ -6,7 +6,8 @@
 #include "util/Logger.h"
 
 #include <winrt/Windows.Globalization.h>
-#include <MemoryBuffer.h>  // For IMemoryBufferByteAccess COM interface
+#include <robuffer.h>  // For IMemoryBufferByteAccess COM interface
+#include <inspectable.h>  // For IInspectable
 #include <thread>
 
 using namespace winrt;
