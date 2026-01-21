@@ -5,6 +5,8 @@
 #include "SpeechEngine.h"
 #include "util/Logger.h"
 
+#include <algorithm>  // For std::clamp
+
 #pragma comment(lib, "sapi.lib")
 
 namespace clarity {
