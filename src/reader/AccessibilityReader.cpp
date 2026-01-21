@@ -5,11 +5,9 @@
 #include "AccessibilityReader.h"
 #include "util/Logger.h"
 
-// Define 'interface' for UIAutomation headers
-#undef interface
-#define interface struct
-
-#include <UIAutomation.h>
+// Include COM headers first to properly setup interface keyword
+#include <objbase.h>
+#include <UIAutomationClient.h>
 #include <atlbase.h>
 #include <sstream>
 
