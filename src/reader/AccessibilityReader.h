@@ -5,13 +5,14 @@
 
 #pragma once
 
-// Ensure 'interface' is defined before any Windows SDK headers
-// This is needed for both MSVC and Clang to parse UIAutomation headers correctly
+#include <Windows.h>
+
+// Ensure 'interface' is defined for UIAutomation.h
+// Windows.h should define this, but it may not in all configurations
 #ifndef interface
 #define interface struct
 #endif
 
-#include <Windows.h>
 #include <UIAutomation.h>
 #include <string>
 #include <functional>
