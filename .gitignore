@@ -1,5 +1,6 @@
 # Build outputs
 build/
+build-*/
 out/
 install/
 *.exe
@@ -34,6 +35,9 @@ _deps/
 
 # vcpkg
 vcpkg_installed/
+
+# xwin (cross-compile SDK cache)
+.xwin-cache/
 
 # Logs
 *.log
