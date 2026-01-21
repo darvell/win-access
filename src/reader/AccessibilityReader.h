@@ -6,6 +6,12 @@
 #pragma once
 
 #include <Windows.h>
+
+// Define 'interface' for Clang compatibility with Windows SDK headers
+#ifndef interface
+#define interface struct
+#endif
+
 #include <UIAutomation.h>
 #include <string>
 #include <functional>

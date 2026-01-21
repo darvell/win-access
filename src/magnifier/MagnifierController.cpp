@@ -5,6 +5,8 @@
 #include "MagnifierController.h"
 #include "util/Logger.h"
 
+#include <algorithm>
+
 #pragma comment(lib, "magnification.lib")
 
 namespace clarity {
