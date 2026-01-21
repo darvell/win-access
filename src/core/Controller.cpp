@@ -233,7 +233,7 @@ bool Controller::InitializeOverlay() {
 
     // Create shader pipeline
     m_shaderPipeline = std::make_unique<ShaderPipeline>();
-    std::wstring shadersPath = std::filesystem::path(m_assetsPath).parent_path() / L"shaders";
+    // shadersPath already computed above
     if (!m_shaderPipeline->Initialize(m_overlayWindow->GetD3DDevice(), shadersPath)) {
         LOG_ERROR("Failed to initialize shader pipeline");
         return false;
