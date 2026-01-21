@@ -8,10 +8,7 @@
 #include "core/Controller.h"
 
 #include <Windows.h>
-#include <Mmsystem.h>  // For PlaySoundW and SND_* macros
 #include <atomic>
-
-#pragma comment(lib, "winmm.lib")
 
 namespace clarity {
 
@@ -138,17 +135,6 @@ void CALLBACK SafeMode::WatchdogTimerCallback(void* param, unsigned char timerOr
     }
 }
 
-// Play a simple system beep as panic confirmation
-// This function MUST be bulletproof - it's the user's confirmation that panic worked
-void PlayPanicSound() {
-    // Use system beep as fallback that always works
-    MessageBeep(MB_ICONHAND);
-
-    // Also try to play a more distinctive sound
-    // Exclamation sound is usually available on all Windows systems
-    PlaySoundW(reinterpret_cast<LPCWSTR>(SND_ALIAS_SYSTEMEXCLAMATION),
-               nullptr,
-               SND_ALIAS_ID | SND_ASYNC);
-}
+// Note: PlayPanicSound is defined in AudioFeedback.cpp
 
 } // namespace clarity
