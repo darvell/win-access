@@ -451,33 +451,11 @@ void SettingsWindow::CreateBottomControls() {
     // Action buttons row
     int buttonX = MARGIN;
 
-    // Preview button
-    m_previewButton = CreateWindowExW(
-        0, L"BUTTON", L"Preview",
-        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-        buttonX, y, BUTTON_WIDTH, BUTTON_HEIGHT,
-        m_hwnd,
-        reinterpret_cast<HMENU>(static_cast<int>(SettingsControlID::PreviewButton)),
-        m_hInstance, nullptr);
-    SendMessageW(m_previewButton, WM_SETFONT, reinterpret_cast<WPARAM>(m_font), TRUE);
-    buttonX += BUTTON_WIDTH + 10;
-
-    // Full Screen button
-    m_fullScreenButton = CreateWindowExW(
-        0, L"BUTTON", L"Full Screen",
-        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-        buttonX, y, BUTTON_WIDTH, BUTTON_HEIGHT,
-        m_hwnd,
-        reinterpret_cast<HMENU>(static_cast<int>(SettingsControlID::FullScreenButton)),
-        m_hInstance, nullptr);
-    SendMessageW(m_fullScreenButton, WM_SETFONT, reinterpret_cast<WPARAM>(m_font), TRUE);
-    buttonX += BUTTON_WIDTH + 10;
-
     // Reset button
     m_resetButton = CreateWindowExW(
-        0, L"BUTTON", L"Reset",
+        0, L"BUTTON", L"Reset Defaults",
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-        buttonX, y, 80, BUTTON_HEIGHT,
+        buttonX, y, 110, BUTTON_HEIGHT,
         m_hwnd,
         reinterpret_cast<HMENU>(static_cast<int>(SettingsControlID::ResetButton)),
         m_hInstance, nullptr);
@@ -604,13 +582,7 @@ LRESULT SettingsWindow::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam) {
                 OnComboChanged(controlId);
             }
             else if (notifyCode == BN_CLICKED) {
-                if (controlId == static_cast<int>(SettingsControlID::PreviewButton)) {
-                    OnPreviewClicked();
-                }
-                else if (controlId == static_cast<int>(SettingsControlID::FullScreenButton)) {
-                    OnFullScreenClicked();
-                }
-                else if (controlId == static_cast<int>(SettingsControlID::ResetButton)) {
+                if (controlId == static_cast<int>(SettingsControlID::ResetButton)) {
                     OnResetClicked();
                 }
                 else if (controlId == static_cast<int>(SettingsControlID::MinimizeButton)) {
@@ -747,38 +719,6 @@ void SettingsWindow::OnCheckChanged(int controlId) {
             profile.magnifier.lensMode = checked ? true : false;
             m_controller->ReloadCurrentProfile();
         }
-    }
-}
-
-void SettingsWindow::OnPreviewClicked() {
-    if (!m_controller) return;
-
-    // Enable enhancement if not already enabled
-    if (!m_controller->IsEnhancementEnabled()) {
-        m_controller->EnableEnhancement(true);
-        Button_SetCheck(m_enableEnhancementCheck, BST_CHECKED);
-    }
-
-    // TODO: Could implement a preview region mode here
-    // For now, just ensure enhancement is on so user can see their changes
-
-    m_previewMode = true;
-    UpdateStatus();
-}
-
-void SettingsWindow::OnFullScreenClicked() {
-    if (!m_controller) return;
-
-    // Enable full screen enhancement
-    m_controller->EnableEnhancement(true);
-    Button_SetCheck(m_enableEnhancementCheck, BST_CHECKED);
-
-    m_previewMode = false;
-    UpdateStatus();
-
-    // Save settings
-    if (m_controller->GetProfileManager()) {
-        m_controller->GetProfileManager()->SaveCurrentProfile();
     }
 }
 

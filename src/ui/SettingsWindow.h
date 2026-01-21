@@ -65,8 +65,6 @@ enum class SettingsControlID : int {
     // Bottom controls (1400-1499)
     ProfileLabel = 1400,
     ProfileCombo,
-    PreviewButton,
-    FullScreenButton,
     ResetButton,
     MinimizeButton,
 };
@@ -113,7 +111,6 @@ private:
     Controller* m_controller = nullptr;
     bool m_visible = false;
     bool m_initialized = false;
-    bool m_previewMode = false;  // True = preview region, False = full screen
 
     // Tab control
     HWND m_tabControl = nullptr;
@@ -155,8 +152,6 @@ private:
 
     // Bottom controls
     HWND m_profileCombo = nullptr;
-    HWND m_previewButton = nullptr;
-    HWND m_fullScreenButton = nullptr;
     HWND m_resetButton = nullptr;
     HWND m_minimizeButton = nullptr;
 
@@ -193,8 +188,6 @@ private:
     void OnSliderChanged(HWND slider);
     void OnComboChanged(int controlId);
     void OnCheckChanged(int controlId);
-    void OnPreviewClicked();
-    void OnFullScreenClicked();
     void OnResetClicked();
     void OnMinimizeClicked();
 
