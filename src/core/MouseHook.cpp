@@ -56,13 +56,11 @@ void MouseHook::Uninstall() {
 
 LRESULT CALLBACK MouseHook::LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
     if (nCode >= 0 && s_instance && s_instance->m_callback) {
-        // Only handle right button events
+        auto* hookStruct = reinterpret_cast<MSLLHOOKSTRUCT*>(lParam);
+        bool ctrlHeld = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+
+        // Handle right button events
         if (wParam == WM_RBUTTONDOWN || wParam == WM_RBUTTONUP) {
-            auto* hookStruct = reinterpret_cast<MSLLHOOKSTRUCT*>(lParam);
-
-            // Check if Ctrl is held
-            bool ctrlHeld = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
-
             // Only invoke callback for Ctrl+RightClick down, or any right button up
             if (wParam == WM_RBUTTONUP || (wParam == WM_RBUTTONDOWN && ctrlHeld)) {
                 s_instance->m_callback(
@@ -71,6 +69,14 @@ LRESULT CALLBACK MouseHook::LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM l
                     ctrlHeld
                 );
             }
+        }
+        // Handle mouse movement (for cursor tracking while quick lens is active)
+        else if (wParam == WM_MOUSEMOVE) {
+            s_instance->m_callback(
+                static_cast<UINT>(wParam),
+                hookStruct->pt,
+                ctrlHeld
+            );
         }
     }
 

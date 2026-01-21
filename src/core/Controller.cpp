@@ -516,6 +516,10 @@ bool Controller::InitializeMagnifier() {
                 m_overlayWindow->Hide();
             }
         }
+        else if (msg == WM_MOUSEMOVE && m_quickLensActive) {
+            // Track cursor movement while quick lens is active
+            m_quickLensPosition = { pt.x + 60, pt.y - 60 };
+        }
     });
 
     // Start capture immediately for low-latency quick lens
