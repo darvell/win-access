@@ -2,11 +2,15 @@
  * Clarity Layer - Accessibility Reader Implementation
  */
 
+// Must define 'interface' before ANY Windows headers are included
+// UIAutomation headers use 'interface' keyword which isn't defined by default
+#ifndef interface
+#define interface struct
+#endif
+
 #include "AccessibilityReader.h"
 #include "util/Logger.h"
 
-// Include COM headers first to properly setup interface keyword
-#include <objbase.h>
 #include <UIAutomationClient.h>
 #include <atlbase.h>
 #include <sstream>
