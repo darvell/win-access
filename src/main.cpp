@@ -4,6 +4,7 @@
  */
 
 #include <Windows.h>
+#include <unknwn.h>  // Required before C++/WinRT headers for classic COM
 #include <winrt/base.h>
 #include <shellapi.h>
 #include <commctrl.h>

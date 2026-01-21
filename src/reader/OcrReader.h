@@ -6,6 +6,7 @@
 #pragma once
 
 #include <Windows.h>
+#include <unknwn.h>  // Required before C++/WinRT headers for classic COM
 #include <winrt/base.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Foundation.Collections.h>
