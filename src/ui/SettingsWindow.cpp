@@ -700,25 +700,26 @@ void SettingsWindow::OnComboChanged(int controlId) {
 }
 
 void SettingsWindow::OnCheckChanged(int controlId) {
-    if (!m_controller) return;
+    if (!m_controller || !m_controller->GetProfileManager()) return;
+
+    auto& profile = m_controller->GetProfileManager()->GetCurrentProfileMutable();
 
     if (controlId == static_cast<int>(SettingsControlID::EnableEnhancementCheck)) {
         BOOL checked = Button_GetCheck(m_enableEnhancementCheck) == BST_CHECKED;
+        profile.visual.enabled = checked ? true : false;  // Update profile so slider changes don't reset it
         m_controller->EnableEnhancement(checked ? true : false);
         UpdateStatus();
     }
     else if (controlId == static_cast<int>(SettingsControlID::EnableMagnifierCheck)) {
         BOOL checked = Button_GetCheck(m_enableMagnifierCheck) == BST_CHECKED;
+        profile.magnifier.enabled = checked ? true : false;  // Update profile so slider changes don't reset it
         m_controller->EnableMagnifier(checked ? true : false);
         UpdateStatus();
     }
     else if (controlId == static_cast<int>(SettingsControlID::LensModeCheck)) {
-        if (m_controller->GetProfileManager()) {
-            auto& profile = m_controller->GetProfileManager()->GetCurrentProfileMutable();
-            BOOL checked = Button_GetCheck(m_lensModeCheck) == BST_CHECKED;
-            profile.magnifier.lensMode = checked ? true : false;
-            m_controller->ReloadCurrentProfile();
-        }
+        BOOL checked = Button_GetCheck(m_lensModeCheck) == BST_CHECKED;
+        profile.magnifier.lensMode = checked ? true : false;
+        m_controller->ReloadCurrentProfile();
     }
 }
 

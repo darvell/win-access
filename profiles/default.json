@@ -2,11 +2,11 @@
   "name": "default",
   "version": 1,
   "visual": {
-    "enabled": false,
-    "contrast": 1.5,
-    "brightness": 0.1,
+    "enabled": true,
+    "contrast": 1.0,
+    "brightness": 0.0,
     "gamma": 1.0,
-    "saturation": 0.8,
+    "saturation": 1.0,
     "invertMode": "none",
     "edgeStrength": 0.0
   },
