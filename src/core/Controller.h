@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <functional>
+#include <atomic>
 
 namespace clarity {
 
@@ -128,6 +129,7 @@ private:
     bool m_magnifierEnabled = false;
     bool m_initialized = false;
     bool m_startedInSafeMode = false;
+    std::atomic<bool> m_shuttingDown{false};
 
     // Paths
     std::wstring m_appDataPath;

@@ -11,6 +11,7 @@
 #include <wrl/client.h>
 #include <vector>
 #include <functional>
+#include <string>
 
 namespace clarity {
 
@@ -38,7 +39,7 @@ public:
     OverlayWindow& operator=(const OverlayWindow&) = delete;
 
     // Initialize D3D11 and create window
-    bool Initialize(HINSTANCE hInstance);
+    bool Initialize(HINSTANCE hInstance, const std::wstring& shadersPath = L"");
 
     // Show/hide overlay
     void Show();
@@ -98,6 +99,13 @@ private:
 
     // Blend state for transparency
     ComPtr<ID3D11BlendState> m_blendState;
+
+    // Shaders for rendering
+    ComPtr<ID3D11VertexShader> m_vertexShader;
+    ComPtr<ID3D11PixelShader> m_pixelShader;
+
+    // Shaders path
+    std::wstring m_shadersPath;
 
     // Register window class
     bool RegisterWindowClass();

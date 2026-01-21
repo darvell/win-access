@@ -38,16 +38,19 @@ void SafeMode::ActivatePanicOff() {
     LOG_INFO("PANIC OFF activated!");
     m_safeMode = true;
 
-    // Call all registered panic callbacks
-    for (const auto& callback : m_panicCallbacks) {
-        try {
-            callback();
-        }
-        catch (const std::exception& e) {
-            LOG_ERROR("Panic callback threw exception: {}", e.what());
-        }
-        catch (...) {
-            LOG_ERROR("Panic callback threw unknown exception");
+    // Call all registered panic callbacks (with synchronization)
+    {
+        std::lock_guard<std::mutex> lock(m_callbackMutex);
+        for (const auto& callback : m_panicCallbacks) {
+            try {
+                callback();
+            }
+            catch (const std::exception& e) {
+                LOG_ERROR("Panic callback threw exception: {}", e.what());
+            }
+            catch (...) {
+                LOG_ERROR("Panic callback threw unknown exception");
+            }
         }
     }
 
@@ -74,6 +77,7 @@ void SafeMode::ExitSafeMode() {
 }
 
 void SafeMode::RegisterPanicCallback(PanicCallback callback) {
+    std::lock_guard<std::mutex> lock(m_callbackMutex);
     m_panicCallbacks.push_back(std::move(callback));
 }
 
@@ -82,8 +86,8 @@ void SafeMode::StartWatchdog() {
         StopWatchdog();
     }
 
-    // Record initial heartbeat
-    m_lastHeartbeat = GetTickCount();
+    // Record initial heartbeat (use GetTickCount64 to avoid 49-day wraparound)
+    m_lastHeartbeat = GetTickCount64();
 
     // Create timer queue timer
     HANDLE timerQueue = nullptr;
@@ -112,7 +116,8 @@ void SafeMode::StopWatchdog() {
 }
 
 void SafeMode::Heartbeat() {
-    InterlockedExchange(&m_lastHeartbeat, GetTickCount());
+    InterlockedExchange64(reinterpret_cast<volatile LONG64*>(&m_lastHeartbeat),
+                          static_cast<LONG64>(GetTickCount64()));
 }
 
 void CALLBACK SafeMode::WatchdogTimerCallback(void* param, unsigned char timerOrWaitFired) {
@@ -121,13 +126,19 @@ void CALLBACK SafeMode::WatchdogTimerCallback(void* param, unsigned char timerOr
     auto* self = static_cast<SafeMode*>(param);
     if (!self) return;
 
-    DWORD now = GetTickCount();
-    DWORD lastBeat = static_cast<DWORD>(InterlockedCompareExchange(&self->m_lastHeartbeat, 0, 0));
+    ULONGLONG now = GetTickCount64();
+    ULONGLONG lastBeat = static_cast<ULONGLONG>(
+        InterlockedCompareExchange64(reinterpret_cast<volatile LONG64*>(&self->m_lastHeartbeat), 0, 0));
+
+    // Restore the value if it was 0 (we just wanted to read it)
+    if (lastBeat == 0) {
+        lastBeat = self->m_lastHeartbeat;
+    }
 
     // Check if heartbeat is stale
-    DWORD elapsed = now - lastBeat;
+    ULONGLONG elapsed = now - lastBeat;
     if (elapsed > WATCHDOG_TIMEOUT_MS * 2) {
-        LOG_WARN("Watchdog timeout! Last heartbeat was {}ms ago", elapsed);
+        LOG_WARN("Watchdog timeout! Last heartbeat was {}ms ago", static_cast<unsigned long>(elapsed));
 
         // Trigger panic off from watchdog
         // Note: This runs on timer thread, so we need to be careful

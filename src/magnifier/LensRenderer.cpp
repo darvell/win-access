@@ -136,11 +136,17 @@ void LensRenderer::Render(ID3D11Texture2D* source,
                            POINT center,
                            float zoomLevel,
                            int lensSize) {
-    if (!source || !target) return;
+    // Validate all required resources
+    if (!source || !target || !m_context || !m_device) return;
 
     // Get source texture dimensions
     D3D11_TEXTURE2D_DESC texDesc;
     source->GetDesc(&texDesc);
+
+    // Validate texture dimensions to prevent division by zero
+    if (texDesc.Width == 0 || texDesc.Height == 0) {
+        return;
+    }
 
     // Calculate lens parameters in UV space
     float centerU = static_cast<float>(center.x) / texDesc.Width;

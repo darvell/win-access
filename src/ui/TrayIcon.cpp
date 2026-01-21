@@ -39,8 +39,8 @@ bool TrayIcon::Initialize(HWND hwnd, HINSTANCE hInstance, Controller* controller
         m_nid.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
     }
 
-    // Set tooltip
-    wcscpy_s(m_nid.szTip, GetTooltipText().c_str());
+    // Set tooltip (safely truncate if needed)
+    wcsncpy_s(m_nid.szTip, _countof(m_nid.szTip), GetTooltipText().c_str(), _TRUNCATE);
 
     // Add the tray icon
     if (!Shell_NotifyIconW(NIM_ADD, &m_nid)) {
@@ -63,8 +63,8 @@ bool TrayIcon::Initialize(HWND hwnd, HINSTANCE hInstance, Controller* controller
 void TrayIcon::UpdateState() {
     if (!m_initialized) return;
 
-    // Update tooltip
-    wcscpy_s(m_nid.szTip, GetTooltipText().c_str());
+    // Update tooltip (safely truncate if needed)
+    wcsncpy_s(m_nid.szTip, _countof(m_nid.szTip), GetTooltipText().c_str(), _TRUNCATE);
 
     // Update icon if needed (could use different icons for different states)
     Shell_NotifyIconW(NIM_MODIFY, &m_nid);
@@ -77,8 +77,8 @@ void TrayIcon::ShowBalloon(const std::wstring& title, const std::wstring& messag
     if (!m_initialized) return;
 
     m_nid.uFlags |= NIF_INFO;
-    wcscpy_s(m_nid.szInfoTitle, title.c_str());
-    wcscpy_s(m_nid.szInfo, message.c_str());
+    wcsncpy_s(m_nid.szInfoTitle, _countof(m_nid.szInfoTitle), title.c_str(), _TRUNCATE);
+    wcsncpy_s(m_nid.szInfo, _countof(m_nid.szInfo), message.c_str(), _TRUNCATE);
     m_nid.dwInfoFlags = iconType;
 
     Shell_NotifyIconW(NIM_MODIFY, &m_nid);
@@ -88,6 +88,8 @@ void TrayIcon::ShowBalloon(const std::wstring& title, const std::wstring& messag
 }
 
 LRESULT TrayIcon::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam) {
+    (void)wParam;  // Unused parameter
+
     if (msg != WM_TRAYICON) {
         return 0;
     }

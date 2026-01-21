@@ -7,6 +7,8 @@
 
 #include <dwmapi.h>
 #include <d3dcompiler.h>
+#include <fstream>
+#include <filesystem>
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -32,8 +34,9 @@ OverlayWindow::~OverlayWindow() {
     }
 }
 
-bool OverlayWindow::Initialize(HINSTANCE hInstance) {
+bool OverlayWindow::Initialize(HINSTANCE hInstance, const std::wstring& shadersPath) {
     m_hInstance = hInstance;
+    m_shadersPath = shadersPath;
 
     // Calculate total desktop bounds
     CalculateBounds();
@@ -128,6 +131,14 @@ void OverlayWindow::RenderFrame(ID3D11Texture2D* texture) {
     // Set blend state
     float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
     m_context->OMSetBlendState(m_blendState.Get(), blendFactor, 0xFFFFFFFF);
+
+    // Set shaders
+    if (m_vertexShader) {
+        m_context->VSSetShader(m_vertexShader.Get(), nullptr, 0);
+    }
+    if (m_pixelShader) {
+        m_context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
+    }
 
     // Draw fullscreen quad
     UINT stride = sizeof(Vertex);
@@ -450,6 +461,55 @@ bool OverlayWindow::CreateRenderResources() {
         return false;
     }
 
+    // Load shaders if path is provided
+    if (!m_shadersPath.empty()) {
+        // Load vertex shader
+        auto vsPath = std::filesystem::path(m_shadersPath) / L"fullscreen_vs.cso";
+        std::ifstream vsFile(vsPath, std::ios::binary);
+        if (vsFile.is_open()) {
+            std::vector<char> vsData((std::istreambuf_iterator<char>(vsFile)),
+                                      std::istreambuf_iterator<char>());
+            vsFile.close();
+
+            hr = m_device->CreateVertexShader(vsData.data(), vsData.size(), nullptr, &m_vertexShader);
+            if (FAILED(hr)) {
+                LOG_WARN("Failed to create overlay vertex shader: 0x{:08X}", hr);
+            }
+
+            // Recreate input layout with shader bytecode
+            D3D11_INPUT_ELEMENT_DESC layout[] = {
+                { "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+                { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 8, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            };
+
+            m_inputLayout.Reset();
+            hr = m_device->CreateInputLayout(layout, 2, vsData.data(), vsData.size(), &m_inputLayout);
+            if (FAILED(hr)) {
+                LOG_WARN("Failed to create overlay input layout: 0x{:08X}", hr);
+            }
+        }
+        else {
+            LOG_WARN("Could not open vertex shader: {}", vsPath.string());
+        }
+
+        // Load passthrough pixel shader
+        auto psPath = std::filesystem::path(m_shadersPath) / L"passthrough.cso";
+        std::ifstream psFile(psPath, std::ios::binary);
+        if (psFile.is_open()) {
+            std::vector<char> psData((std::istreambuf_iterator<char>(psFile)),
+                                      std::istreambuf_iterator<char>());
+            psFile.close();
+
+            hr = m_device->CreatePixelShader(psData.data(), psData.size(), nullptr, &m_pixelShader);
+            if (FAILED(hr)) {
+                LOG_WARN("Failed to create overlay pixel shader: 0x{:08X}", hr);
+            }
+        }
+        else {
+            LOG_WARN("Could not open pixel shader: {}", psPath.string());
+        }
+    }
+
     return true;
 }
 
@@ -474,17 +534,38 @@ void OverlayWindow::Resize() {
     int width = m_bounds.right - m_bounds.left;
     int height = m_bounds.bottom - m_bounds.top;
 
+    // Validate dimensions
+    if (width <= 0 || height <= 0) {
+        LOG_ERROR("Invalid resize dimensions: {}x{}", width, height);
+        return;
+    }
+
     HRESULT hr = m_swapChain->ResizeBuffers(2, width, height,
                                              DXGI_FORMAT_B8G8R8A8_UNORM, 0);
     if (FAILED(hr)) {
         LOG_ERROR("Failed to resize swap chain: 0x{:08X}", hr);
+        // Hide overlay since we can't render without a valid swap chain
+        Hide();
         return;
     }
 
     // Recreate render target
     ComPtr<ID3D11Texture2D> backBuffer;
-    m_swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
-    m_device->CreateRenderTargetView(backBuffer.Get(), nullptr, &m_renderTarget);
+    hr = m_swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
+    if (FAILED(hr) || !backBuffer) {
+        LOG_ERROR("Failed to get back buffer after resize: 0x{:08X}", hr);
+        Hide();
+        return;
+    }
+
+    hr = m_device->CreateRenderTargetView(backBuffer.Get(), nullptr, &m_renderTarget);
+    if (FAILED(hr) || !m_renderTarget) {
+        LOG_ERROR("Failed to create render target after resize: 0x{:08X}", hr);
+        Hide();
+        return;
+    }
+
+    LOG_DEBUG("Overlay resized to {}x{}", width, height);
 }
 
 LRESULT CALLBACK OverlayWindow::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {

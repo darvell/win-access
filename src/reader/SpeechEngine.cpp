@@ -6,6 +6,7 @@
 #include "util/Logger.h"
 
 #include <algorithm>  // For std::clamp
+#include <filesystem>
 
 #pragma comment(lib, "sapi.lib")
 
@@ -14,13 +15,19 @@ namespace clarity {
 SpeechEngine::SpeechEngine() = default;
 
 SpeechEngine::~SpeechEngine() {
+    // First, stop any current speech
     Stop();
+
+    // Signal thread to exit
     m_running = false;
 
+    // Wait for thread to fully exit BEFORE releasing COM resources
+    // This ensures thread doesn't access m_voice after it's released
     if (m_speechThread.joinable()) {
         m_speechThread.join();
     }
 
+    // Now safe to release COM resources since thread has exited
     if (m_voice) {
         m_voice->Release();
         m_voice = nullptr;
@@ -190,14 +197,14 @@ bool SpeechEngine::SetVoice(const std::wstring& voiceName) {
             if (match) {
                 hr = m_voice->SetVoice(token);
                 if (SUCCEEDED(hr)) {
-                    LOG_INFO("Voice set to: {}", std::string(voiceName.begin(), voiceName.end()));
+                    LOG_INFO("Voice set to: {}", std::filesystem::path(voiceName).string());
                     return true;
                 }
             }
         }
     }
 
-    LOG_WARN("Voice not found: {}", std::string(voiceName.begin(), voiceName.end()));
+    LOG_WARN("Voice not found: {}", std::filesystem::path(voiceName).string());
     return false;
 }
 
@@ -230,12 +237,14 @@ void SpeechEngine::SpeechThreadFunc() {
             }
         }
 
-        if (!textToSpeak.empty() && m_voice) {
+        // Double-check m_running before accessing m_voice
+        // This prevents accessing m_voice during shutdown
+        if (!textToSpeak.empty() && m_running && m_voice) {
             // Speak synchronously (in this thread)
             m_voice->Speak(textToSpeak.c_str(), SPF_DEFAULT, nullptr);
         }
-        else {
-            // Sleep briefly when idle
+        else if (m_running) {
+            // Sleep briefly when idle (only if still running)
             Sleep(50);
         }
     }

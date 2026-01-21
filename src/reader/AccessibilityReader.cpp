@@ -267,8 +267,13 @@ std::wstring AccessibilityReader::GetValuePatternContent(IUIAutomationElement* e
     return GetElementValue(element);
 }
 
-std::wstring AccessibilityReader::BuildAccessibleText(IUIAutomationElement* element) {
+std::wstring AccessibilityReader::BuildAccessibleText(IUIAutomationElement* element, int depth) {
     if (!element) return L"";
+
+    // Prevent stack overflow from deep/infinite recursion
+    if (depth >= MAX_RECURSION_DEPTH) {
+        return L"";
+    }
 
     std::wstringstream ss;
 
@@ -299,13 +304,13 @@ std::wstring AccessibilityReader::BuildAccessibleText(IUIAutomationElement* elem
         ss << textContent;
     }
 
-    // If we got nothing, try getting from children
+    // If we got nothing, try getting from children (with depth limit)
     if (ss.tellp() == 0 && m_walker) {
         CComPtr<IUIAutomationElement> child;
         m_walker->GetFirstChildElement(element, &child);
 
         if (child) {
-            std::wstring childText = BuildAccessibleText(child);
+            std::wstring childText = BuildAccessibleText(child, depth + 1);
             if (!childText.empty()) {
                 ss << childText;
             }

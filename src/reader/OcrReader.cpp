@@ -8,6 +8,7 @@
 #include <winrt/Windows.Globalization.h>
 #include <inspectable.h>  // For IInspectable
 #include <thread>
+#include <filesystem>
 
 // IMemoryBufferByteAccess COM interface definition
 // This interface provides direct byte access to memory buffers
@@ -49,7 +50,7 @@ bool OcrReader::Initialize() {
         m_currentLanguage = lang.LanguageTag().c_str();
 
         LOG_INFO("OcrReader initialized with language: {}",
-                 std::string(m_currentLanguage.begin(), m_currentLanguage.end()));
+                 std::filesystem::path(m_currentLanguage).string());
         return true;
     }
     catch (const winrt::hresult_error& e) {
@@ -90,10 +91,17 @@ void OcrReader::RecognizeRegion(RECT region, OcrCallback callback) {
 void OcrReader::RecognizeTexture(ID3D11Texture2D* texture, RECT region, OcrCallback callback) {
     if (!m_ocrEngine || !texture || !callback) return;
 
+    // AddRef texture to ensure it stays alive during async operation
+    texture->AddRef();
+
     // Run recognition asynchronously
     std::thread([this, texture, region, callback]() {
         try {
             auto bitmap = TextureToSoftwareBitmap(texture, region);
+
+            // Release the texture now that we've copied its contents
+            texture->Release();
+
             if (!bitmap) {
                 callback(L"");
                 return;
@@ -110,7 +118,13 @@ void OcrReader::RecognizeTexture(ID3D11Texture2D* texture, RECT region, OcrCallb
             callback(text);
         }
         catch (const winrt::hresult_error& e) {
+            // Make sure to release texture even on exception
+            texture->Release();
             LOG_WARN("OCR recognition failed: 0x{:08X}", static_cast<uint32_t>(e.code()));
+            callback(L"");
+        }
+        catch (...) {
+            texture->Release();
             callback(L"");
         }
     }).detach();
@@ -135,7 +149,7 @@ bool OcrReader::SetLanguage(const std::wstring& languageTag) {
         auto lang = Language(languageTag.c_str());
         if (!OcrEngine::IsLanguageSupported(lang)) {
             LOG_WARN("OCR language not supported: {}",
-                     std::string(languageTag.begin(), languageTag.end()));
+                     std::filesystem::path(languageTag).string());
             return false;
         }
 
@@ -143,7 +157,7 @@ bool OcrReader::SetLanguage(const std::wstring& languageTag) {
         if (m_ocrEngine) {
             m_currentLanguage = languageTag;
             LOG_INFO("OCR language set to: {}",
-                     std::string(languageTag.begin(), languageTag.end()));
+                     std::filesystem::path(languageTag).string());
             return true;
         }
     }

@@ -79,7 +79,9 @@ private:
     std::wstring GetValuePatternContent(IUIAutomationElement* element);
 
     // Build readable text from element hierarchy
-    std::wstring BuildAccessibleText(IUIAutomationElement* element);
+    // maxDepth limits recursion to prevent stack overflow
+    static constexpr int MAX_RECURSION_DEPTH = 10;
+    std::wstring BuildAccessibleText(IUIAutomationElement* element, int depth = 0);
 };
 
 } // namespace clarity

@@ -199,21 +199,24 @@ POINT FocusTracker::GetCaretPosition() {
         textPattern->Release();
     }
 
-    // Fallback: try to get caret from window
+    // Fallback: try to get caret from window (only if focused is still valid)
     if (caretPos.x == 0 && caretPos.y == 0) {
         HWND focusedWnd = GetForegroundWindow();
-        DWORD threadId = GetWindowThreadProcessId(focusedWnd, nullptr);
-        GUITHREADINFO guiInfo = { sizeof(GUITHREADINFO) };
+        if (focusedWnd) {
+            DWORD threadId = GetWindowThreadProcessId(focusedWnd, nullptr);
+            GUITHREADINFO guiInfo = { sizeof(GUITHREADINFO) };
 
-        if (GetGUIThreadInfo(threadId, &guiInfo)) {
-            if (guiInfo.hwndCaret) {
-                caretPos.x = guiInfo.rcCaret.left;
-                caretPos.y = guiInfo.rcCaret.top;
-                ClientToScreen(guiInfo.hwndCaret, &caretPos);
+            if (GetGUIThreadInfo(threadId, &guiInfo)) {
+                if (guiInfo.hwndCaret) {
+                    caretPos.x = guiInfo.rcCaret.left;
+                    caretPos.y = guiInfo.rcCaret.top;
+                    ClientToScreen(guiInfo.hwndCaret, &caretPos);
+                }
             }
         }
     }
 
+    // IMPORTANT: Always release focused element before returning
     focused->Release();
     return caretPos;
 }

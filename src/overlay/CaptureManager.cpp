@@ -65,8 +65,10 @@ void CaptureManager::Stop() {
     LOG_INFO("Stopping capture");
 
     for (auto& capture : m_captures) {
-        if (capture.framePool) {
+        // Revoke the event handler first (before closing frame pool)
+        if (capture.framePool && capture.frameArrivedToken) {
             capture.framePool.FrameArrived(capture.frameArrivedToken);
+            capture.frameArrivedToken = {};  // Reset token after revocation
         }
         if (capture.session) {
             capture.session.Close();
@@ -261,6 +263,10 @@ void CaptureManager::OnFrameArrived(
         ID3D11Texture2D* texture = GetTextureFromSurface(surface);
         if (!texture) return;
 
+        // AddRef to ensure texture lifetime during callback
+        // The texture is owned by the frame, so we need to extend its lifetime
+        texture->AddRef();
+
         // Call the frame callback
         {
             std::lock_guard<std::mutex> lock(m_callbackMutex);
@@ -269,7 +275,8 @@ void CaptureManager::OnFrameArrived(
             }
         }
 
-        // Note: texture is released when frame goes out of scope
+        // Release our reference - texture may still be used by frame until frame goes out of scope
+        texture->Release();
     }
     catch (const winrt::hresult_error& e) {
         LOG_WARN("Frame processing error: 0x{:08X}", static_cast<uint32_t>(e.code()));

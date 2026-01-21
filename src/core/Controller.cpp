@@ -130,6 +130,9 @@ bool Controller::Initialize(bool safeMode) {
 void Controller::Shutdown() {
     LOG_INFO("Shutting down Controller");
 
+    // Set shutdown flag first - this prevents callbacks from accessing members
+    m_shuttingDown = true;
+
     // Stop watchdog
     if (m_safeMode) {
         m_safeMode->StopWatchdog();
@@ -141,13 +144,23 @@ void Controller::Shutdown() {
     // Save state
     SaveState();
 
-    // Shutdown in reverse order
+    // CRITICAL: Stop CaptureManager first and wait for callbacks to complete
+    // This must happen before resetting other pointers that callbacks may access
+    if (m_captureManager) {
+        m_captureManager->Stop();
+    }
+
+    // Give a short delay for any in-flight callbacks to complete
+    Sleep(50);
+
+    // Now safe to shutdown in reverse order
     m_trayIcon.reset();
     m_ocrReader.reset();
     m_speechEngine.reset();
     m_accessibilityReader.reset();
     m_focusTracker.reset();
     m_magnifierController.reset();
+    m_lensRenderer.reset();  // Reset before shader pipeline and overlay
     m_shaderPipeline.reset();
     m_overlayWindow.reset();
     m_captureManager.reset();
@@ -205,7 +218,8 @@ bool Controller::InitializeOverlay() {
 
     // Create D3D11 overlay window
     m_overlayWindow = std::make_unique<OverlayWindow>();
-    if (!m_overlayWindow->Initialize(m_hInstance)) {
+    std::wstring shadersPath = std::filesystem::path(m_assetsPath).parent_path() / L"shaders";
+    if (!m_overlayWindow->Initialize(m_hInstance, shadersPath)) {
         LOG_ERROR("Failed to create overlay window");
         return false;
     }
@@ -227,6 +241,9 @@ bool Controller::InitializeOverlay() {
 
     // Connect capture to overlay rendering
     m_captureManager->SetFrameCallback([this](ID3D11Texture2D* frame) {
+        // Check if shutting down - don't access members during shutdown
+        if (m_shuttingDown) return;
+
         if (m_enhancementEnabled && m_overlayWindow && m_shaderPipeline) {
             // Apply shader transforms and render
             auto transformedFrame = m_shaderPipeline->Process(frame);
@@ -262,6 +279,9 @@ bool Controller::InitializeOverlay() {
                         profile.magnifier.lensSize);
                 }
             }
+
+            // Present the frame to display
+            m_overlayWindow->Present();
         }
 
         // Heartbeat for watchdog
@@ -298,7 +318,8 @@ bool Controller::InitializeOverlay() {
 
         // Reinitialize lens renderer with new device
         if (m_lensRenderer && m_overlayWindow->GetD3DDevice()) {
-            if (!m_lensRenderer->Initialize(m_overlayWindow->GetD3DDevice(), shadersPath)) {
+            std::wstring lensShaderPath = std::filesystem::path(m_assetsPath).parent_path() / L"shaders";
+            if (!m_lensRenderer->Initialize(m_overlayWindow->GetD3DDevice(), lensShaderPath)) {
                 LOG_WARN("Failed to reinitialize lens renderer after device lost");
             }
         }

@@ -8,6 +8,7 @@
 #include <Windows.h>
 #include <functional>
 #include <vector>
+#include <mutex>
 
 namespace clarity {
 
@@ -59,10 +60,11 @@ private:
     bool m_safeMode = false;
     Controller* m_controller = nullptr;
     std::vector<PanicCallback> m_panicCallbacks;
+    mutable std::mutex m_callbackMutex;  // Protects m_panicCallbacks
 
     // Watchdog state
     void* m_watchdogTimer = nullptr;  // HANDLE
-    volatile long m_lastHeartbeat = 0;
+    volatile ULONGLONG m_lastHeartbeat = 0;  // For GetTickCount64()
     static constexpr int WATCHDOG_TIMEOUT_MS = 5000;
 
     static void CALLBACK WatchdogTimerCallback(void* param, unsigned char timerOrWaitFired);

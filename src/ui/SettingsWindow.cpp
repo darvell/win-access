@@ -169,6 +169,11 @@ void SettingsWindow::CreateTabControl() {
         reinterpret_cast<HMENU>(static_cast<int>(SettingsControlID::TabControl)),
         m_hInstance, nullptr);
 
+    if (!m_tabControl) {
+        LOG_ERROR("Failed to create tab control");
+        return;
+    }
+
     SendMessageW(m_tabControl, WM_SETFONT, reinterpret_cast<WPARAM>(m_font), TRUE);
 
     // Add tabs
@@ -199,17 +204,29 @@ void SettingsWindow::CreateTabControl() {
         tabRect.left, tabRect.top, pageWidth, pageHeight,
         m_tabControl, nullptr, m_hInstance, nullptr);
 
+    if (!m_visualPage) {
+        LOG_ERROR("Failed to create visual tab page");
+    }
+
     m_magnifierPage = CreateWindowExW(
         0, TAB_PAGE_CLASS_NAME, nullptr,
         WS_CHILD | WS_CLIPSIBLINGS,
         tabRect.left, tabRect.top, pageWidth, pageHeight,
         m_tabControl, nullptr, m_hInstance, nullptr);
 
+    if (!m_magnifierPage) {
+        LOG_ERROR("Failed to create magnifier tab page");
+    }
+
     m_speechPage = CreateWindowExW(
         0, TAB_PAGE_CLASS_NAME, nullptr,
         WS_CHILD | WS_CLIPSIBLINGS,
         tabRect.left, tabRect.top, pageWidth, pageHeight,
         m_tabControl, nullptr, m_hInstance, nullptr);
+
+    if (!m_speechPage) {
+        LOG_ERROR("Failed to create speech tab page");
+    }
 }
 
 SettingsWindow::SliderRow SettingsWindow::CreateSliderRow(
